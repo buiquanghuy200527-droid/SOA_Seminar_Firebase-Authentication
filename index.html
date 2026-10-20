@@ -1,0 +1,585 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Bảng ghi chú môn học – Firebase Auth Demo</title>
+<style>
+:root { --bg:#f4f5f7; --card:#fff; --text:#1d2330; --muted:#6b7280; --line:#e3e6eb; --primary:#1a56db; --danger:#c81e1e; --ok:#057a55; --warn-bg:#fff8e1; --err-bg:#fdecec; --ok-bg:#e8f6ef; }
+* { box-sizing:border-box; }
+body { margin:0; font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:var(--text); }
+.hidden { display:none !important; }
+.topbar { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:14px 20px; background:var(--card); border-bottom:1px solid var(--line); }
+.brand { font-weight:700; font-size:17px; }
+.tag { font-weight:400; color:var(--muted); font-size:13px; margin-left:8px; }
+main { max-width:1100px; margin:24px auto; padding:0 16px; display:grid; gap:16px; }
+.card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:20px; min-width:0; }
+.card.narrow { max-width:420px; width:100%; margin:24px auto; }
+h2 { margin:0 0 6px; font-size:18px; }
+h3 { margin:12px 0 4px; font-size:13px; text-transform:uppercase; color:var(--muted); letter-spacing:.04em; }
+.muted { color:var(--muted); font-size:14px; }
+.grid { display:grid; grid-template-columns:1fr 1.4fr; gap:16px; margin-bottom:16px; align-items:start; }
+@media (max-width:800px) { .grid { grid-template-columns:1fr; } }
+.row { display:flex; gap:8px; flex-wrap:wrap; margin:10px 0; }
+.btn { border:1px solid var(--line); background:#fff; color:var(--text); padding:9px 14px; border-radius:8px; font:inherit; cursor:pointer; }
+.btn:hover { filter:brightness(.97); }
+.btn.primary { background:var(--primary); color:#fff; border-color:var(--primary); }
+.btn.danger { background:#fff; color:var(--danger); border-color:var(--danger); }
+.btn.ghost { background:transparent; }
+.btn.small { padding:4px 10px; font-size:13px; }
+.btn.google { width:100%; display:flex; justify-content:center; align-items:center; gap:10px; }
+.link { background:none; border:none; color:var(--primary); cursor:pointer; padding:0; font:inherit; font-size:14px; }
+.danger-text { color:var(--danger); margin-left:8px; }
+.tabs { display:flex; border-bottom:1px solid var(--line); margin:14px 0; }
+.tab { flex:1; padding:8px; background:none; border:none; border-bottom:2px solid transparent; cursor:pointer; font:inherit; color:var(--muted); }
+.tab.active { color:var(--primary); border-bottom-color:var(--primary); font-weight:600; }
+.form { display:grid; gap:12px; }
+.form label { display:grid; gap:4px; font-size:14px; }
+input, textarea { font:inherit; padding:9px 11px; border:1px solid var(--line); border-radius:8px; width:100%; }
+.divider { text-align:center; margin:16px 0; color:var(--muted); font-size:13px; position:relative; }
+.divider::before { content:""; position:absolute; left:0; right:0; top:50%; border-top:1px solid var(--line); }
+.divider span { background:var(--card); padding:0 10px; position:relative; }
+.msg { font-size:14px; margin:10px 0 0; min-height:1em; }
+.msg.error { color:var(--danger); } .msg.ok { color:var(--ok); }
+.banner { padding:12px 16px; border-radius:10px; font-size:14px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:16px; }
+.banner.warn { background:var(--warn-bg); border:1px solid #f3d27a; }
+.banner.error { background:var(--err-bg); border:1px solid #f5b5b5; }
+.profile { display:flex; gap:14px; align-items:center; margin:12px 0; }
+.profile img { width:64px; height:64px; border-radius:50%; object-fit:cover; background:var(--line); flex:none; }
+.pname { font-weight:600; font-size:16px; }
+.role { display:inline-block; margin-top:4px; padding:2px 10px; border-radius:999px; font-size:12px; font-weight:600; }
+.role.student { background:#e1effe; color:#1e429f; } .role.lecturer { background:#fdf6b2; color:#723b13; } .role.guest { background:#f3f4f6; color:#4b5563; }
+.kv { display:grid; grid-template-columns:max-content 1fr; gap:6px 14px; margin:0; font-size:14px; }
+.kv dt { color:var(--muted); } .kv dd { margin:0; word-break:break-all; }
+.mono { font-family:ui-monospace,Menlo,Consolas,monospace; font-size:12.5px; }
+.jwt-raw { background:#111827; color:#e5e7eb; padding:12px; border-radius:8px; word-break:break-all; max-height:130px; overflow:auto; margin-top:10px; }
+.jwt-h { color:#f87171; } .jwt-p { color:#c084fc; } .jwt-s { color:#38bdf8; }
+.jwt-parts { display:grid; grid-template-columns:1fr 1.6fr; gap:12px; }
+@media (max-width:800px) { .jwt-parts { grid-template-columns:1fr; } }
+pre { background:#f9fafb; border:1px solid var(--line); border-radius:8px; padding:10px; overflow:auto; font-size:12.5px; margin:0; max-height:300px; white-space:pre-wrap; word-break:break-all; }
+pre.ok-box { background:var(--ok-bg); border-color:#a7dcc2; } pre.err-box { background:var(--err-bg); border-color:#f5b5b5; }
+.note-form { display:flex; gap:8px; margin:12px 0; align-items:flex-start; }
+.note-form textarea { min-height:44px; resize:vertical; }
+#try-write { margin:12px 0; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.notes { list-style:none; padding:0; margin:12px 0 0; display:grid; gap:8px; }
+.notes li { border:1px solid var(--line); border-radius:8px; padding:10px 12px; }
+.note-meta { font-size:13px; } .note-text { margin-top:4px; white-space:pre-wrap; word-break:break-word; }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">Bảng ghi chú môn học <span class="tag">Firebase Authentication · Nhóm 12</span></div>
+  <button id="btn-logout" class="btn ghost hidden">Đăng xuất</button>
+</header>
+
+<main>
+  <div id="setup-warning" class="banner error hidden"></div>
+
+  <!-- ===================== PHA 1: XÁC THỰC ===================== -->
+  <section id="auth-view" class="card narrow hidden">
+    <h2>Pha 1 · Đăng nhập</h2>
+    <p class="muted">Chọn một cách xác thực do Firebase Authentication cung cấp.</p>
+    <div class="tabs">
+      <button class="tab active" data-tab="login">Đăng nhập</button>
+      <button class="tab" data-tab="register">Đăng ký</button>
+    </div>
+    <form id="form-login" class="form">
+      <label>Email <input type="email" id="login-email" required autocomplete="username" /></label>
+      <label>Mật khẩu <input type="password" id="login-password" required autocomplete="current-password" /></label>
+      <button type="submit" class="btn primary">Đăng nhập bằng Email/Password</button>
+      <button type="button" id="btn-forgot" class="link">Quên mật khẩu?</button>
+    </form>
+    <form id="form-register" class="form hidden">
+      <label>Họ tên <input type="text" id="reg-name" required /></label>
+      <label>Email <input type="email" id="reg-email" required autocomplete="username" placeholder="mssv@student.tdtu.edu.vn" /></label>
+      <label>Mật khẩu (tối thiểu 6 ký tự) <input type="password" id="reg-password" required minlength="6" autocomplete="new-password" /></label>
+      <button type="submit" class="btn primary">Tạo tài khoản</button>
+    </form>
+    <div class="divider"><span>hoặc</span></div>
+    <button id="btn-google" class="btn google">
+      <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>
+      Đăng nhập bằng Google
+    </button>
+    <p id="auth-msg" class="msg"></p>
+  </section>
+
+  <!-- ===================== CHẾ ĐỘ DEMO: email ngoài trường chọn vai trò ===================== -->
+  <section id="role-pick-view" class="card narrow hidden">
+    <h2>Chế độ demo · Chọn vai trò để thử</h2>
+    <p class="muted">Email này không thuộc tên miền của trường, nên vai trò do bạn tự chọn để thử demo. Đổi lại được bất cứ lúc nào.</p>
+    <p class="muted">Dù chọn vai trò nào, <b>quyền của vai trò đó vẫn do server kiểm tra</b> bằng Security Rules: Sinh viên được đọc + ghi, Giảng viên chỉ được đọc.</p>
+    <div class="row">
+      <button id="btn-pick-student" class="btn primary">Thử với vai trò Sinh viên</button>
+      <button id="btn-pick-lecturer" class="btn">Thử với vai trò Giảng viên</button>
+    </div>
+    <p id="role-msg" class="msg"></p>
+  </section>
+
+  <!-- ===================== SAU KHI ĐĂNG NHẬP ===================== -->
+  <section id="app-view" class="hidden">
+    <div id="demo-banner" class="banner warn hidden">
+      <span>Chế độ demo — vai trò tự chọn: <b id="demo-role-label"></b></span>
+      <button id="btn-switch-role" class="btn small"></button>
+      <span id="demo-msg" class="msg error" style="margin:0"></span>
+    </div>
+    <div id="verify-banner" class="banner warn hidden">
+      Email chưa được xác minh nên chưa có quyền gì. Mở hộp thư, bấm link xác minh rồi bấm
+      <button id="btn-verified" class="btn small">Tôi đã xác minh</button>
+      <button id="btn-resend" class="btn small ghost">Gửi lại email</button>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <h2>Thông tin người dùng</h2>
+        <div class="profile">
+          <img id="p-photo" alt="" />
+          <div>
+            <div id="p-name" class="pname"></div>
+            <div id="p-email" class="muted"></div>
+            <span id="p-role" class="role"></span>
+          </div>
+        </div>
+        <dl class="kv">
+          <dt>UID</dt><dd id="p-uid" class="mono"></dd>
+          <dt>Đăng nhập bằng</dt><dd id="p-provider"></dd>
+          <dt>Email đã xác minh</dt><dd id="p-verified"></dd>
+          <dt>Quyền trên app</dt><dd id="p-perm"></dd>
+        </dl>
+      </div>
+      <div class="card">
+        <h2>ID Token (JWT)</h2>
+        <p class="muted">Sau khi đăng nhập, Firebase cấp một JWT. Server dùng token này để biết bạn là ai.</p>
+        <div class="row">
+          <button id="btn-token" class="btn">Xem token</button>
+          <button id="btn-verify" class="btn primary">Gửi lên server kiểm tra</button>
+          <button id="btn-tamper" class="btn danger">Sửa token rồi gửi</button>
+        </div>
+        <div id="jwt-out" class="hidden">
+          <div class="jwt-raw mono" id="jwt-raw"></div>
+          <div class="jwt-parts">
+            <div><h3>Header</h3><pre id="jwt-header"></pre></div>
+            <div><h3>Payload</h3><pre id="jwt-payload"></pre></div>
+          </div>
+        </div>
+        <div id="server-out" class="hidden"><h3>Phản hồi từ server của Google</h3><pre id="server-res"></pre></div>
+      </div>
+    </div>
+
+    <!-- ===================== PHA 2: PHÂN QUYỀN ===================== -->
+    <div class="card">
+      <h2>Pha 2 · Ghi chú môn học</h2>
+      <p id="perm-note" class="muted"></p>
+      <form id="form-note" class="note-form hidden">
+        <textarea id="note-text" maxlength="500" placeholder="Viết ghi chú..." required></textarea>
+        <button type="submit" class="btn primary">Đăng</button>
+      </form>
+      <div id="try-write" class="hidden">
+        <button id="btn-try-write" class="btn danger">Thử ghi dù không có quyền</button>
+        <span class="muted">Giao diện không chặn — để xem server có chặn không.</span>
+      </div>
+      <p id="notes-msg" class="msg"></p>
+      <ul id="notes" class="notes"></ul>
+    </div>
+  </section>
+</main>
+
+<script>
+  // Script thường (không phải module) để luôn chạy được, kể cả khi Firebase không tải được.
+  if (location.protocol === "file:") {
+    var w = document.getElementById("setup-warning");
+    w.innerHTML = "Trang này phải được mở qua một <b>đường link web</b> (ví dụ link Netlify), không mở trực tiếp file trên máy. Xem HUONG-DAN.md, Bước 6.";
+    w.classList.remove("hidden");
+  }
+</script>
+<script type="module">
+/* =====================================================================
+   CẤU HÌNH — chỉ cần sửa trong khung này (xem HUONG-DAN.md, Bước 4 và 5)
+   ===================================================================== */
+const firebaseConfig = {
+  apiKey: "AIzaSyBK_zUfBGuRsUpFSJXG06bTdya3XpS83rA",
+  authDomain: "test-d3c8c.firebaseapp.com",
+  projectId: "test-d3c8c",
+  storageBucket: "test-d3c8c.firebasestorage.app",
+  messagingSenderId: "972587571884",
+  appId: "1:972587571884:web:6e7cbc0a876ff798bddd09",
+};
+// Email cá nhân được khai báo trước để MÔ PHỎNG giảng viên.
+// Đây chỉ là cấu hình hiển thị; quyền thật được kiểm tra trong firestore.rules.
+// Nếu đổi email, sửa Y HỆT trong hàm demoLecturerEmails() của firestore.rules.
+const DEMO_LECTURER_EMAILS = ["buiquanghuy200527@gmail.com"];
+/* ===================================================================== */
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+import {
+  getAuth, onAuthStateChanged, signOut,
+  createUserWithEmailAndPassword, signInWithEmailAndPassword,
+  sendEmailVerification, sendPasswordResetEmail, updateProfile,
+  GoogleAuthProvider, signInWithPopup,
+} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+import {
+  getFirestore, collection, addDoc, deleteDoc, doc, getDoc, setDoc,
+  query, orderBy, limit, onSnapshot, serverTimestamp,
+} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+
+const $ = (id) => document.getElementById(id);
+
+function stop(html) {
+  $("setup-warning").innerHTML = html;
+  $("setup-warning").classList.remove("hidden");
+  throw new Error("setup");
+}
+if (location.protocol === "file:") throw new Error("setup"); // banner đã hiện ở script phía trên
+if (firebaseConfig.apiKey.startsWith("DAN_")) {
+  stop("Chưa dán cấu hình Firebase. Mở file <code>index.html</code>, tìm khung CẤU HÌNH ở đầu phần script và làm theo HUONG-DAN.md, Bước 4.");
+}
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+auth.languageCode = "vi"; // email xác minh / quên mật khẩu bằng tiếng Việt
+
+let unsubscribeNotes = null;
+let currentRole = "guest";
+
+/* ---------------- Phân quyền theo tên miền email ----------------
+   Chỉ để HIỂN THỊ giao diện. Quyền thật được chặn ở server bằng firestore.rules. */
+const STUDENT_DOMAIN = "@student.tdtu.edu.vn";
+const LECTURER_DOMAIN = "@tdtu.edu.vn";
+const ROLE_INFO = {
+  student: { label: "Sinh viên", perm: "Đọc + Ghi" },
+  lecturer: { label: "Giảng viên", perm: "Chỉ đọc" },
+  guest: { label: "Khách", perm: "Không có quyền" },
+};
+// Đăng nhập bằng Google = Google đã xác nhận bạn sở hữu email này, nên tính là đã xác minh
+// (tài khoản trường dùng Google Workspace có thể không có cờ email_verified).
+const isTrusted = (user, provider) => user.emailVerified || provider === "google.com";
+const isDemoLecturer = (email) => DEMO_LECTURER_EMAILS.includes((email || "").toLowerCase());
+// Vai trò CỐ ĐỊNH: theo domain trường hoặc email giảng viên demo đã khai báo.
+const hasFixedRole = (email) => {
+  const e = (email || "").toLowerCase();
+  return e.endsWith(STUDENT_DOMAIN) || e.endsWith(LECTURER_DOMAIN) || isDemoLecturer(e);
+};
+// Email khác dùng CHẾ ĐỘ DEMO: vai trò tự chọn (demoRole), lưu ở collection "roles".
+function getRole(email, trusted, demoRole) {
+  if (!email || !trusted) return "guest";
+  const e = email.toLowerCase();
+  if (e.endsWith(LECTURER_DOMAIN) || isDemoLecturer(e)) return "lecturer";
+  if (e.endsWith(STUDENT_DOMAIN)) return "student";
+  if (demoRole === "student" || demoRole === "lecturer") return demoRole;
+  return "guest";
+}
+async function fetchDemoRole(uid) {
+  const snap = await getDoc(doc(db, "roles", uid));
+  const r = snap.exists() ? snap.data().role : null;
+  return r === "student" || r === "lecturer" ? r : null;
+}
+// Lưu vai trò demo lên Firestore. Security Rules kiểm tra: chỉ email ngoài trường được ghi,
+// chỉ nhận "student" hoặc "lecturer", và chỉ ghi được hồ sơ của chính mình.
+async function saveDemoRole(role) {
+  const u = auth.currentUser;
+  await setDoc(doc(db, "roles", u.uid), { role, email: u.email, updatedAt: serverTimestamp() });
+  render(u);
+}
+
+/* ---------------- Thông báo lỗi dễ hiểu ---------------- */
+const ERRORS = {
+  "auth/invalid-credential": "Sai email hoặc mật khẩu.",
+  "auth/wrong-password": "Sai mật khẩu.",
+  "auth/user-not-found": "Chưa có tài khoản với email này — hãy Đăng ký trước.",
+  "auth/invalid-email": "Email không hợp lệ.",
+  "auth/missing-password": "Hãy nhập mật khẩu.",
+  "auth/email-already-in-use": "Email này đã được đăng ký — chuyển sang tab Đăng nhập.",
+  "auth/weak-password": "Mật khẩu phải có ít nhất 6 ký tự.",
+  "auth/too-many-requests": "Thử quá nhiều lần, vui lòng đợi một lúc.",
+  "auth/popup-closed-by-user": "Bạn đã đóng cửa sổ đăng nhập Google.",
+  "auth/cancelled-popup-request": "Bạn đã đóng cửa sổ đăng nhập Google.",
+  "auth/popup-blocked": "Trình duyệt chặn cửa sổ đăng nhập Google — hãy cho phép popup rồi bấm lại.",
+  "auth/account-exists-with-different-credential":
+    "Email này đã được đăng ký bằng mật khẩu. Hãy đăng nhập bằng Email/Password, hoặc dùng tài khoản Google khác.",
+  "auth/operation-not-allowed": "Phương thức đăng nhập này chưa được bật trong Firebase Console (HUONG-DAN.md, Bước 2).",
+  "auth/unauthorized-domain": `Tên miền ${location.hostname} chưa được thêm vào Authorized domains (HUONG-DAN.md, Bước 7).`,
+  "auth/network-request-failed": "Mất kết nối mạng, thử lại.",
+  "permission-denied": "Server từ chối (permission-denied): Security Rules không cho phép thao tác này.",
+  "unavailable": "Không kết nối được Firestore — kiểm tra mạng, hoặc đã tạo Firestore Database chưa (Bước 3).",
+  "failed-precondition": "Firestore chưa sẵn sàng — đã tạo Firestore Database chưa (Bước 3)?",
+};
+const errText = (e) => ERRORS[e.code] || `${e.code || "lỗi"}: ${e.message}`;
+function show(el, text, type = "") { el.textContent = text; el.className = "msg " + type; }
+
+/* ---------------- PHA 1: XÁC THỰC ---------------- */
+function selectTab(name) {
+  document.querySelectorAll(".tab").forEach((x) => x.classList.toggle("active", x.dataset.tab === name));
+  $("form-login").classList.toggle("hidden", name !== "login");
+  $("form-register").classList.toggle("hidden", name !== "register");
+  show($("auth-msg"), "");
+}
+document.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => selectTab(t.dataset.tab)));
+
+// 1a. Đăng ký bằng Email/Password → gửi email xác minh
+$("form-register").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  try {
+    const cred = await createUserWithEmailAndPassword(auth, $("reg-email").value.trim(), $("reg-password").value);
+    await updateProfile(cred.user, { displayName: $("reg-name").value.trim() });
+    await sendEmailVerification(cred.user);
+    render(cred.user); // cập nhật tên vừa đặt
+  } catch (e) { show($("auth-msg"), errText(e), "error"); }
+});
+
+// 1b. Đăng nhập bằng Email/Password
+$("form-login").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  try { await signInWithEmailAndPassword(auth, $("login-email").value.trim(), $("login-password").value); }
+  catch (e) { show($("auth-msg"), errText(e), "error"); }
+});
+
+// 1c. Quên mật khẩu
+$("btn-forgot").addEventListener("click", async () => {
+  const email = $("login-email").value.trim();
+  if (!email) return show($("auth-msg"), "Nhập email ở ô phía trên trước.", "error");
+  try {
+    await sendPasswordResetEmail(auth, email);
+    show($("auth-msg"), "Đã gửi email đặt lại mật khẩu (nếu email này tồn tại).", "ok");
+  } catch (e) { show($("auth-msg"), errText(e), "error"); }
+});
+
+// 1d. Đăng nhập bằng Google
+$("btn-google").addEventListener("click", async () => {
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: "select_account" }); // luôn cho chọn tài khoản (tiện khi đổi vai)
+  try { await signInWithPopup(auth, provider); }
+  catch (e) { show($("auth-msg"), errText(e), "error"); }
+});
+
+$("btn-logout").addEventListener("click", () => signOut(auth));
+
+// Xác minh email xong: tải lại user VÀ làm mới token,
+// vì token cũ vẫn ghi email_verified=false nên Security Rules sẽ còn chặn.
+$("btn-verified").addEventListener("click", async () => {
+  await auth.currentUser.reload();
+  await auth.currentUser.getIdToken(true);
+  render(auth.currentUser);
+});
+$("btn-resend").addEventListener("click", async () => {
+  try { await sendEmailVerification(auth.currentUser); alert("Đã gửi lại email xác minh."); }
+  catch (e) { alert(errText(e)); }
+});
+
+/* ---------------- Chế độ demo: chọn / đổi vai trò ---------------- */
+$("btn-pick-student").addEventListener("click", () =>
+  saveDemoRole("student").catch((e) => show($("role-msg"), errText(e), "error")));
+$("btn-pick-lecturer").addEventListener("click", () =>
+  saveDemoRole("lecturer").catch((e) => show($("role-msg"), errText(e), "error")));
+$("btn-switch-role").addEventListener("click", () =>
+  saveDemoRole(currentRole === "student" ? "lecturer" : "student").catch((e) => show($("demo-msg"), errText(e), "error")));
+
+/* ---------------- Theo dõi trạng thái đăng nhập ---------------- */
+onAuthStateChanged(auth, (user) => render(user));
+
+let renderSeq = 0;
+async function render(user) {
+  const seq = ++renderSeq;
+  const loggedIn = !!user;
+  $("auth-view").classList.toggle("hidden", loggedIn);
+  $("app-view").classList.toggle("hidden", !loggedIn);
+  $("role-pick-view").classList.add("hidden");
+  $("demo-banner").classList.add("hidden");
+  $("btn-logout").classList.toggle("hidden", !loggedIn);
+  $("jwt-out").classList.add("hidden");
+  $("server-out").classList.add("hidden");
+  if (unsubscribeNotes) { unsubscribeNotes(); unsubscribeNotes = null; }
+  if (!user) { selectTab("login"); return; }
+
+  // Cách đăng nhập của LẦN NÀY lấy từ token (một tài khoản có thể gắn cả mật khẩu lẫn Google)
+  const provider = (await user.getIdTokenResult()).signInProvider;
+  if (seq !== renderSeq) return;
+  const trusted = isTrusted(user, provider);
+
+  // Email ngoài trường (đã xác minh) → chế độ demo: đọc vai trò đã chọn; chưa chọn thì hiện màn chọn.
+  const isDemo = trusted && !hasFixedRole(user.email);
+  let demoRole = null;
+  if (isDemo) {
+    demoRole = await fetchDemoRole(user.uid).catch(() => null);
+    if (seq !== renderSeq) return;
+    if (!demoRole) {
+      $("app-view").classList.add("hidden");
+      $("role-pick-view").classList.remove("hidden");
+      show($("role-msg"), "");
+      return;
+    }
+  }
+
+  currentRole = getRole(user.email, trusted, demoRole);
+  const info = ROLE_INFO[currentRole];
+  if (isDemo) {
+    $("demo-banner").classList.remove("hidden");
+    $("demo-role-label").textContent = info.label;
+    $("btn-switch-role").textContent = currentRole === "student" ? "Chuyển sang Giảng viên" : "Chuyển sang Sinh viên";
+    show($("demo-msg"), "", "error");
+  }
+
+  // Tài khoản Google có ảnh đại diện; tài khoản Email/Password thì vẽ chữ cái đầu
+  const initial = (user.displayName || user.email || "?").trim()[0].toUpperCase().replace(/[<&>]/g, "");
+  $("p-photo").src = user.photoURL || "data:image/svg+xml," + encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="#1a56db"/>` +
+    `<text x="32" y="42" font-size="28" font-family="sans-serif" fill="#fff" text-anchor="middle">${initial}</text></svg>`);
+  $("p-name").textContent = user.displayName || "(chưa đặt tên)";
+  $("p-email").textContent = user.email;
+  $("p-role").textContent = info.label;
+  $("p-role").className = "role " + currentRole;
+  $("p-uid").textContent = user.uid;
+  $("p-provider").textContent = provider === "google.com" ? "Google" : "Email/Password";
+  $("p-verified").textContent = user.emailVerified ? "Có" : provider === "google.com" ? "Có (Google xác nhận)" : "Chưa";
+  $("p-perm").textContent = info.perm;
+  $("verify-banner").classList.toggle("hidden", trusted);
+
+  // ---- PHA 2: giao diện theo vai trò ----
+  $("form-note").classList.toggle("hidden", currentRole !== "student");
+  // Chỉ giảng viên mới thấy nút thử ghi để minh họa Security Rules từ chối.
+  $("try-write").classList.toggle("hidden", currentRole !== "lecturer");
+  $("perm-note").textContent = {
+    student: "Bạn là sinh viên: được đọc và đăng ghi chú, chỉ xoá ghi chú của chính mình.",
+    lecturer: "Bạn là giảng viên: chỉ được đọc, không được ghi.",
+    guest: "Email chưa được xác minh nên chưa có quyền. Hãy xác minh email (xem banner phía trên).",
+  }[currentRole] + (isDemo ? " (Chế độ demo — vai trò tự chọn, quyền vẫn do server kiểm tra.)" : "");
+  show($("notes-msg"), "");
+  if (currentRole === "guest") {
+    // Không gửi truy vấn đọc dữ liệu với tài khoản khách; xoá nội dung cũ nếu vừa đổi tài khoản.
+    $("notes").innerHTML = "";
+    show($("notes-msg"), "Không có quyền đọc ghi chú nội bộ.");
+  } else {
+    listenNotes();
+  }
+}
+
+/* ---------------- PHA 2: PHÂN QUYỀN (Firestore) ---------------- */
+function listenNotes() {
+  const q = query(collection(db, "notes"), orderBy("createdAt", "desc"), limit(50));
+  unsubscribeNotes = onSnapshot(q,
+    (snap) => {
+      const list = $("notes");
+      list.innerHTML = "";
+      if (snap.empty) list.innerHTML = '<li class="muted">Chưa có ghi chú nào.</li>';
+      snap.forEach((d) => list.appendChild(noteItem(d.id, d.data())));
+    },
+    (e) => { // Người không có quyền đọc rơi vào đây — lỗi do SERVER trả về
+      $("notes").innerHTML = "";
+      show($("notes-msg"), "Không đọc được: " + errText(e), "error");
+    });
+}
+
+function noteItem(id, n) {
+  const li = document.createElement("li");
+  const when = n.createdAt?.toDate().toLocaleString("vi-VN") || "đang lưu…";
+  li.innerHTML = `<div class="note-meta"><b></b> <span class="muted"></span></div><div class="note-text"></div>`;
+  li.querySelector("b").textContent = n.authorName || n.authorEmail;
+  li.querySelector(".muted").textContent = `${n.authorEmail} · ${when}`;
+  li.querySelector(".note-text").textContent = n.text; // textContent để không chèn được HTML độc hại
+  if (currentRole === "student" && n.authorUid === auth.currentUser?.uid) {
+    const del = document.createElement("button");
+    del.className = "link danger-text";
+    del.textContent = "Xoá";
+    del.onclick = () => deleteDoc(doc(db, "notes", id)).catch((e) => show($("notes-msg"), errText(e), "error"));
+    li.querySelector(".note-meta").appendChild(del);
+  }
+  return li;
+}
+
+async function writeNote(text) {
+  const u = auth.currentUser;
+  await addDoc(collection(db, "notes"), {
+    text, authorUid: u.uid, authorEmail: u.email, authorName: u.displayName || u.email, createdAt: serverTimestamp(),
+  });
+}
+
+$("form-note").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const text = $("note-text").value.trim();
+  if (!text) return;
+  try { await writeNote(text); $("note-text").value = ""; show($("notes-msg"), "Đã đăng.", "ok"); }
+  catch (e) { show($("notes-msg"), errText(e), "error"); }
+});
+
+// Giảng viên cố tình ghi — giao diện KHÔNG chặn, để chứng minh server chặn
+$("btn-try-write").addEventListener("click", async () => {
+  try {
+    await writeNote("Thử ghi từ tài khoản không có quyền ghi");
+    show($("notes-msg"), "Ghi được?! Kiểm tra lại Security Rules đã dán đúng chưa (Bước 5).", "error");
+  } catch (e) { show($("notes-msg"), errText(e), "error"); }
+});
+
+/* ---------------- JWT ---------------- */
+function decodePart(part) {
+  const b64 = part.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(part.length / 4) * 4, "=");
+  return JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))));
+}
+function encodePart(obj) {
+  const bytes = new TextEncoder().encode(JSON.stringify(obj));
+  return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+const fmtTime = (s) => new Date(s * 1000).toLocaleString("vi-VN");
+
+$("btn-token").addEventListener("click", async () => {
+  const token = await auth.currentUser.getIdToken();
+  const [h, p, s] = token.split(".");
+  $("jwt-raw").innerHTML = "";
+  [[h, "h"], [".", ""], [p, "p"], [".", ""], [s, "s"]].forEach(([txt, cls]) => {
+    const span = document.createElement("span");
+    span.textContent = txt;
+    if (cls) span.className = "jwt-" + cls;
+    $("jwt-raw").appendChild(span);
+  });
+  const payload = decodePart(p);
+  $("jwt-header").textContent = JSON.stringify(decodePart(h), null, 2);
+  $("jwt-payload").textContent = JSON.stringify({ ...payload, "// iat (cấp lúc)": fmtTime(payload.iat), "// exp (hết hạn)": fmtTime(payload.exp) }, null, 2);
+  $("jwt-out").classList.remove("hidden");
+});
+
+// Gửi token cho server xác thực của Google (Identity Toolkit). Server kiểm tra chữ ký,
+// hạn dùng và project — giống hệt việc verifyIdToken làm ở một backend riêng.
+async function sendToServer(token) {
+  $("server-out").classList.remove("hidden");
+  $("server-res").textContent = "Đang gửi…";
+  const emu = auth.emulatorConfig;
+  const base = emu ? `http://${emu.host}:${emu.port}/identitytoolkit.googleapis.com` : "https://identitytoolkit.googleapis.com";
+  try {
+    const res = await fetch(`${base}/v1/accounts:lookup?key=${firebaseConfig.apiKey}`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ idToken: token }),
+    });
+    const body = await res.json();
+    let out;
+    if (res.ok && body.users?.length) {
+      const u = body.users[0];
+      const claims = decodePart(token.split(".")[1]);
+      out = {
+        valid: true,
+        message: "Token hợp lệ — server tin đây đúng là người dùng này.",
+        uid: u.localId,
+        email: u.email,
+        email_verified: !!u.emailVerified,
+        sign_in_provider: claims.firebase?.sign_in_provider,
+        role: ROLE_INFO[currentRole].label,
+        expires_at: fmtTime(claims.exp),
+      };
+    } else {
+      out = { valid: false, message: "Token không hợp lệ — server từ chối.", error: body.error?.message || "unknown" };
+    }
+    $("server-res").textContent = `HTTP ${res.status}\n` + JSON.stringify(out, null, 2);
+    $("server-res").className = out.valid ? "ok-box" : "err-box";
+  } catch (e) {
+    $("server-res").textContent = "Không gọi được server. Kiểm tra kết nối mạng.";
+    $("server-res").className = "err-box";
+  }
+}
+
+$("btn-verify").addEventListener("click", async () => sendToServer(await auth.currentUser.getIdToken()));
+
+// Đổi email trong payload (giả mạo) nhưng giữ nguyên chữ ký cũ → chữ ký không còn khớp → server từ chối
+$("btn-tamper").addEventListener("click", async () => {
+  const [h, p, s] = (await auth.currentUser.getIdToken()).split(".");
+  const payload = decodePart(p);
+  payload.email = "hacker@student.tdtu.edu.vn";
+  sendToServer(`${h}.${encodePart(payload)}.${s}`);
+});
+</script>
+</body>
+</html>

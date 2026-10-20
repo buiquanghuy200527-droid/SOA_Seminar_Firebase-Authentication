@@ -1,0 +1,79 @@
+rules_version = '2';
+
+// PHÂN QUYỀN — chạy trên SERVER của Firebase, người dùng không sửa được.
+//   @student.tdtu.edu.vn → Sinh viên (đọc + ghi; chỉ sửa/xoá ghi chú của chính mình)
+//   @tdtu.edu.vn         → Giảng viên (chỉ đọc)
+//   Email trong demoLecturerEmails() → Giảng viên (chỉ đọc)
+//   Email khác (Gmail cá nhân...) → CHẾ ĐỘ DEMO: tự chọn/đổi vai trò Sinh viên hoặc Giảng viên,
+//     vai trò lưu ở collection "roles". Quyền của từng vai trò vẫn do các quy tắc bên dưới quyết định.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn()  { return request.auth != null; }
+    function verified()  {
+      return request.auth.token.email_verified == true
+        || request.auth.token.firebase.sign_in_provider == 'google.com';
+    }
+    function email() { return request.auth.token.email.lower(); }
+
+    // Danh sách email demo được làm Giảng viên cố định. Viết CHỮ THƯỜNG.
+    // Đổi/ thêm email ở đây thì sửa Y HỆT DEMO_LECTURER_EMAILS trong index.html.
+    function demoLecturerEmails() { return ['buiquanghuy200527@gmail.com']; }
+    function isDemoLecturer() { return email() in demoLecturerEmails(); }
+
+    function studentDomain()  { return email().matches('.*@student[.]tdtu[.]edu[.]vn'); }
+    function lecturerDomain() { return email().matches('.*@tdtu[.]edu[.]vn'); }
+
+    // Tài khoản chế độ demo: đã đăng nhập + xác minh, KHÔNG thuộc domain trường, KHÔNG nằm trong danh sách.
+    function isDemoUser() {
+      return signedIn() && verified() && !studentDomain() && !lecturerDomain() && !isDemoLecturer();
+    }
+    function hasDemoRole(r) {
+      return exists(/databases/$(database)/documents/roles/$(request.auth.uid))
+        && get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role == r;
+    }
+
+    function isLecturer() {
+      return signedIn() && verified() &&
+        (lecturerDomain() || isDemoLecturer() || (isDemoUser() && hasDemoRole('lecturer')));
+    }
+    function isStudent() {
+      return signedIn() && verified() && !isLecturer() &&
+        (studentDomain() || (isDemoUser() && hasDemoRole('student')));
+    }
+
+    // Vai trò chế độ demo: chỉ tài khoản demo được ghi, chỉ hồ sơ của chính mình,
+    // chỉ nhận 'student' hoặc 'lecturer'. Đổi lại bất cứ lúc nào.
+    match /roles/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow create, update: if isDemoUser() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['role', 'email', 'updatedAt'])
+        && request.resource.data.role in ['student', 'lecturer']
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if false;
+    }
+
+    match /notes/{noteId} {
+      allow read: if isStudent() || isLecturer();
+      allow create: if isStudent()
+        && request.resource.data.keys().hasOnly(['text', 'authorUid', 'authorEmail', 'authorName', 'createdAt'])
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.authorEmail == request.auth.token.email
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 500
+        && request.resource.data.createdAt == request.time;
+      allow update: if isStudent() && resource.data.authorUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text'])
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 500;
+      allow delete: if isStudent() && resource.data.authorUid == request.auth.uid;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
