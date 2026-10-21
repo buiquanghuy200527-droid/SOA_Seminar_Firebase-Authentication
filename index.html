@@ -195,12 +195,12 @@ pre.ok-box { background:var(--ok-bg); border-color:#a7dcc2; } pre.err-box { back
    CẤU HÌNH — chỉ cần sửa trong khung này (xem HUONG-DAN.md, Bước 4 và 5)
    ===================================================================== */
 const firebaseConfig = {
-  apiKey: "AIzaSyBK_zUfBGuRsUpFSJXG06bTdya3XpS83rA",
-  authDomain: "test-d3c8c.firebaseapp.com",
-  projectId: "test-d3c8c",
-  storageBucket: "test-d3c8c.firebasestorage.app",
-  messagingSenderId: "972587571884",
-  appId: "1:972587571884:web:6e7cbc0a876ff798bddd09",
+  apiKey: "AIzaSyDXzk5ZoaQIMxXjD8z_DqGsfNQrryPm6dY",
+  authDomain: "finaltest-4468a.firebaseapp.com",
+  projectId: "finaltest-4468a",
+  storageBucket: "finaltest-4468a.firebasestorage.app",
+  messagingSenderId: "990577671195",
+  appId: "1:990577671195:web:41b191e1a9f99ad2ddccbe"
 };
 // Email cá nhân được khai báo trước để MÔ PHỎNG giảng viên.
 // Đây chỉ là cấu hình hiển thị; quyền thật được kiểm tra trong firestore.rules.
@@ -253,6 +253,9 @@ const ROLE_INFO = {
 // (tài khoản trường dùng Google Workspace có thể không có cờ email_verified).
 const isTrusted = (user, provider) => user.emailVerified || provider === "google.com";
 const isDemoLecturer = (email) => DEMO_LECTURER_EMAILS.includes((email || "").toLowerCase());
+// Quản trị buổi demo: xoá được mọi ghi chú để dọn nội dung không phù hợp.
+// Quyền thật vẫn do firestore.rules (hàm isAdmin) quyết định.
+const isAdminUser = () => isDemoLecturer(auth.currentUser?.email);
 // Vai trò CỐ ĐỊNH: theo domain trường hoặc email giảng viên demo đã khai báo.
 const hasFixedRole = (email) => {
   const e = (email || "").toLowerCase();
@@ -282,7 +285,9 @@ async function saveDemoRole(role) {
 
 /* ---------------- Thông báo lỗi dễ hiểu ---------------- */
 const ERRORS = {
-  "auth/invalid-credential": "Sai email hoặc mật khẩu.",
+  // Firebase bật email enumeration protection: "chưa có tài khoản" và "sai mật khẩu"
+  // đều trả về mã này, nên auth/user-not-found bên dưới gần như không bao giờ chạy.
+  "auth/invalid-credential": "Sai email hoặc mật khẩu — hoặc email này chưa đăng ký ở project hiện tại (bấm tab Đăng ký).",
   "auth/wrong-password": "Sai mật khẩu.",
   "auth/user-not-found": "Chưa có tài khoản với email này — hãy Đăng ký trước.",
   "auth/invalid-email": "Email không hợp lệ.",
@@ -474,10 +479,11 @@ function noteItem(id, n) {
   li.querySelector("b").textContent = n.authorName || n.authorEmail;
   li.querySelector(".muted").textContent = `${n.authorEmail} · ${when}`;
   li.querySelector(".note-text").textContent = n.text; // textContent để không chèn được HTML độc hại
-  if (currentRole === "student" && n.authorUid === auth.currentUser?.uid) {
+  const own = n.authorUid === auth.currentUser?.uid;
+  if (isAdminUser() || (currentRole === "student" && own)) {
     const del = document.createElement("button");
     del.className = "link danger-text";
-    del.textContent = "Xoá";
+    del.textContent = own ? "Xoá" : "Xoá (quản trị)";
     del.onclick = () => deleteDoc(doc(db, "notes", id)).catch((e) => show($("notes-msg"), errText(e), "error"));
     li.querySelector(".note-meta").appendChild(del);
   }

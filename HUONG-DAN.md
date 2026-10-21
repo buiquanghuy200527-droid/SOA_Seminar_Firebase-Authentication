@@ -16,7 +16,7 @@ Nếu nhóm mình đã dựng xong từ trước (đã có link Netlify chạy n
 |---|---|---|---|
 | `...@student.tdtu.edu.vn` | **Sinh viên** | Đọc + Ghi (chỉ sửa/xoá ghi chú của mình) | Email trường, tên miền sinh viên |
 | `...@tdtu.edu.vn` (không phải student) | **Giảng viên** | Chỉ đọc | Email trường, tên miền giảng viên |
-| Gmail giảng viên mô phỏng (mình khai báo sẵn) | **Giảng viên** | Chỉ đọc | Email nằm trong danh sách cố định |
+| Gmail giảng viên mô phỏng (mình khai báo sẵn) | **Giảng viên** | Chỉ đọc + **xoá được mọi ghi chú** (dọn nội dung không phù hợp) | Email nằm trong danh sách cố định |
 | Gmail cá nhân bất kỳ khác | **Chế độ demo** | Tự chọn Sinh viên hoặc Giảng viên, đổi lại bất cứ lúc nào | Để ai cũng test được cả hai vai trò |
 
 Điểm quan trọng nhất mình muốn nhấn mạnh khi demo: **dù vai trò do ai chọn, quyền thật sự luôn do server (Firestore Security Rules) quyết định**, không phải do trình duyệt. Giảng viên có cố ghi cũng bị server chặn — kể cả khi tự chọn vai trò Giảng viên ở chế độ demo.
@@ -32,13 +32,13 @@ Mình đánh dấu ☐ từng bước để biết đang làm tới đâu.
 2. Đặt tên (ví dụ `seminar-nhom12`) → tắt Google Analytics → **Create**.
 
 ### ☐ Bước 2 — Bật 2 cách đăng nhập
-1. Menu trái: **Build → Authentication → Get started**.
+1. Firebase Console đã bỏ menu **Build**. Dùng ô **Search for products** ở góc trên trái sidebar → gõ `Authentication` → bấm kết quả → **Get started**. (Tìm bằng menu thì xem trong nhóm **Security**.)
 2. Tab **Sign-in method**:
    - **Email/Password** → bật công tắc đầu tiên → **Save**.
    - **Add new provider → Google** → bật lên → chọn *Support email* → **Save**.
 
 ### ☐ Bước 3 — Tạo Firestore Database
-1. Menu trái: **Build → Firestore Database → Create database**.
+1. Ô **Search for products** → gõ `Firestore` → **Create database**. (Trong menu thì ở nhóm **Databases and storage**.)
 2. Location: `asia-southeast1 (Singapore)` → Next.
 3. Chọn **Start in production mode** → **Create**.
 
@@ -94,7 +94,11 @@ Mở link Netlify, đăng nhập thử bằng mail trường (`@student.tdtu.edu
 10. Mở tab **Rules** trên Firebase Console, chỉ vào các hàm `isStudent()`, `isLecturer()` và `match /roles`: nhấn mạnh rằng vai trò có thể tự chọn, nhưng quyền luôn do server quyết định.
 
 ### Cho cả lớp cùng thử
-Mình gửi link cho cả lớp. Mail trường tự nhận vai trò theo tên miền. Gmail cá nhân sẽ vào chế độ demo, tự chọn và đổi qua lại Sinh viên ↔ Giảng viên bất cứ lúc nào để thử cả hai quyền.
+Mình gửi link cho cả lớp **sau khi demo xong** — nếu gửi trước, ghi chú của cả lớp sẽ đẩy ghi chú demo của mình ra khỏi danh sách (trang chỉ hiện 50 ghi chú mới nhất).
+
+Mail trường tự nhận vai trò theo tên miền. Gmail cá nhân sẽ vào chế độ demo, tự chọn và đổi qua lại Sinh viên ↔ Giảng viên bất cứ lúc nào để thử cả hai quyền.
+
+**Dọn nội dung không phù hợp:** ai cũng đăng được ghi chú khi chọn vai Sinh viên, nên lúc đang chiếu lên lớp có thể có bài linh tinh. Đăng nhập bằng Gmail giảng viên mô phỏng (email trong `DEMO_LECTURER_EMAILS`), mỗi ghi chú sẽ có nút **Xoá (quản trị)** — xoá được bài của bất kỳ ai. Quyền này do hàm `isAdmin()` trong `firestore.rules` cấp, và chỉ cấp quyền *xoá*; tài khoản đó vẫn **không ghi được**, nên phần demo `permission-denied` ở bước 8 vẫn chạy đúng như cũ.
 
 ---
 
@@ -112,3 +116,5 @@ Mình gửi link cho cả lớp. Mail trường tự nhận vai trò theo tên m
 | Gmail cá nhân bấm chọn / đổi vai trò bị permission-denied | Rules chưa Publish bản mới nhất — bản cũ không cho ghi collection `roles` |
 | "Email này đã được đăng ký bằng mật khẩu" khi bấm nút Google | Email đó từng đăng ký bằng Email/Password rồi. Đăng nhập lại bằng Email/Password, hoặc dùng mail khác để thử Google |
 | Popup Google không mở | Trình duyệt đang chặn popup — bấm cho phép rồi thử lại |
+| "Sai email hoặc mật khẩu" dù gõ đúng | Tài khoản được tạo ở **project Firebase khác**. Danh sách user không chuyển giữa các project — vào tab **Đăng ký** tạo lại trên project đang dùng, rồi xác minh email. Firebase bật *email enumeration protection* nên "chưa có tài khoản" và "sai mật khẩu" trả về cùng một mã lỗi |
+| Không tìm thấy menu **Build** trong Console | Google đã đổi bố cục sidebar. Dùng ô **Search for products** ở góc trên trái, gõ tên sản phẩm (`Authentication`, `Firestore`) |

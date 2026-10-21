@@ -21,6 +21,11 @@ service cloud.firestore {
     function demoLecturerEmails() { return ['buiquanghuy200527@gmail.com']; }
     function isDemoLecturer() { return email() in demoLecturerEmails(); }
 
+    // Quản trị buổi demo: cùng danh sách email trên. Được xoá MỌI ghi chú để dọn
+    // nội dung không phù hợp khi cả lớp cùng đăng. Vẫn KHÔNG được ghi mới —
+    // vai trò Giảng viên chỉ đọc, phần demo permission-denied không bị ảnh hưởng.
+    function isAdmin() { return signedIn() && verified() && isDemoLecturer(); }
+
     function studentDomain()  { return email().matches('.*@student[.]tdtu[.]edu[.]vn'); }
     function lecturerDomain() { return email().matches('.*@tdtu[.]edu[.]vn'); }
 
@@ -69,7 +74,8 @@ service cloud.firestore {
         && request.resource.data.text is string
         && request.resource.data.text.size() > 0
         && request.resource.data.text.size() <= 500;
-      allow delete: if isStudent() && resource.data.authorUid == request.auth.uid;
+      allow delete: if isAdmin()
+        || (isStudent() && resource.data.authorUid == request.auth.uid);
     }
 
     match /{document=**} {
