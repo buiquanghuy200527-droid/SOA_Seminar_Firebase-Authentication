@@ -1,54 +1,111 @@
 rules_version = '2';
 
 // PHÂN QUYỀN — chạy trên SERVER của Firebase, người dùng không sửa được.
-//   @student.tdtu.edu.vn → Sinh viên (đọc + ghi; chỉ sửa/xoá ghi chú của chính mình)
-//   @tdtu.edu.vn         → Giảng viên (chỉ đọc)
-//   Email trong demoLecturerEmails() → Giảng viên (chỉ đọc)
-//   Email khác (Gmail cá nhân...) → CHẾ ĐỘ DEMO: tự chọn/đổi vai trò Sinh viên hoặc Giảng viên,
-//     vai trò lưu ở collection "roles". Quyền của từng vai trò vẫn do các quy tắc bên dưới quyết định.
+//
+// NGUỒN VAI TRÒ, theo thứ tự ưu tiên. Tầng trên thắng tầng dưới:
+//
+//   1. /allowlist/{email}  — DO ADMIN CẤP TRƯỚC. Client KHÔNG ghi được (allow write: if false).
+//                            Đây là nguồn vai trò ĐÚNG, và là nguồn duy nhất dùng được khi
+//                            người dùng đăng nhập bằng Google / Microsoft / GitHub cá nhân.
+//
+//   2. Tên miền trường     — @student.tdtu.edu.vn → Sinh viên, @tdtu.edu.vn → Giảng viên.
+//                            CHỈ đúng vì trường kiểm soát việc cấp email. Không suy ra được
+//                            vai trò từ một email ngoài trường.
+//
+//   3. Chế độ demo         — tự chọn vai trò, lưu ở /roles/{uid}. CHỈ để cả lớp thử demo,
+//                            KHÔNG phải cơ chế cấp quyền của hệ thống thật.
+//
+// Dù vai trò đến từ tầng nào, quyền của vai trò đó vẫn do các khối match bên dưới quyết định.
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function signedIn()  { return request.auth != null; }
-    function verified()  {
+    /* ---------- Nền ---------- */
+
+    function signedIn() { return request.auth != null; }
+
+    // request.auth chỉ tồn tại sau khi Firebase đã xác minh CHỮ KÝ của ID Token.
+    function email() { return request.auth.token.email.lower(); }
+
+    // "Đã chứng minh sở hữu email này" — điều kiện bắt buộc trước mọi vai trò.
+    //
+    // CHỈ google.com được tin thêm, vì tài khoản Google Workspace nhiều khi không set cờ
+    // email_verified dù Google đã xác nhận email. KHÔNG thêm microsoft.com hay github.com
+    // vào đây: GitHub cho đổi email chính và có thể trả về email chưa xác minh, còn tài
+    // khoản Microsoft cá nhân thì email do người dùng tự khai. Với hai provider đó, bắt
+    // buộc phải có email_verified == true.
+    function verified() {
       return request.auth.token.email_verified == true
         || request.auth.token.firebase.sign_in_provider == 'google.com';
     }
-    function email() { return request.auth.token.email.lower(); }
 
-    // Danh sách email demo được làm Giảng viên cố định. Viết CHỮ THƯỜNG.
-    // Đổi/ thêm email ở đây thì sửa Y HỆT DEMO_LECTURER_EMAILS trong index.html.
-    function demoLecturerEmails() { return ['buiquanghuy200527@gmail.com']; }
-    function isDemoLecturer() { return email() in demoLecturerEmails(); }
+    /* ---------- Tầng 1: allowlist do admin cấp ---------- */
 
-    // Quản trị buổi demo: cùng danh sách email trên. Được xoá MỌI ghi chú để dọn
-    // nội dung không phù hợp khi cả lớp cùng đăng. Vẫn KHÔNG được ghi mới —
-    // vai trò Giảng viên chỉ đọc, phần demo permission-denied không bị ảnh hưởng.
-    function isAdmin() { return signedIn() && verified() && isDemoLecturer(); }
+    // Tài liệu id = email viết thường. Nội dung: { role: 'student' | 'lecturer' }
+    // Chỉ Admin SDK / Firebase Console ghi được — xem khối match /allowlist bên dưới.
+    function listed() {
+      return exists(/databases/$(database)/documents/allowlist/$(email()));
+    }
+    function listedRole() {
+      return get(/databases/$(database)/documents/allowlist/$(email())).data.role;
+    }
 
+    /* ---------- Tầng 2: tên miền trường ---------- */
+
+    // [.] là dấu chấm THẬT. Dùng '.' trần thì 'a@studentXtdtuYeduZvn' cũng khớp.
+    // matches() khớp TOÀN chuỗi, nên 'x@student.tdtu.edu.vn.evil.com' không lọt.
     function studentDomain()  { return email().matches('.*@student[.]tdtu[.]edu[.]vn'); }
     function lecturerDomain() { return email().matches('.*@tdtu[.]edu[.]vn'); }
 
-    // Tài khoản chế độ demo: đã đăng nhập + xác minh, KHÔNG thuộc domain trường, KHÔNG nằm trong danh sách.
+    /* ---------- Tầng 3: chế độ demo ---------- */
+
+    // Giảng viên mô phỏng cho buổi demo. Đổi ở đây thì sửa y hệt DEMO_LECTURER_EMAILS trong index.html.
+    function demoLecturerEmails() { return ['buiquanghuy200527@gmail.com']; }
+    function isDemoLecturer() { return email() in demoLecturerEmails(); }
+
+    // Được tự chọn vai trò khi: đã xác minh, KHÔNG có trong allowlist, KHÔNG thuộc domain trường.
     function isDemoUser() {
-      return signedIn() && verified() && !studentDomain() && !lecturerDomain() && !isDemoLecturer();
+      return signedIn() && verified() && !listed()
+        && !studentDomain() && !lecturerDomain() && !isDemoLecturer();
     }
     function hasDemoRole(r) {
       return exists(/databases/$(database)/documents/roles/$(request.auth.uid))
         && get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.role == r;
     }
 
+    /* ---------- Quyết định vai trò ---------- */
+
     function isLecturer() {
-      return signedIn() && verified() &&
-        (lecturerDomain() || isDemoLecturer() || (isDemoUser() && hasDemoRole('lecturer')));
+      return signedIn() && verified() && (
+        listed()
+          ? listedRole() == 'lecturer'
+          : (lecturerDomain() || isDemoLecturer() || (isDemoUser() && hasDemoRole('lecturer')))
+      );
     }
     function isStudent() {
-      return signedIn() && verified() && !isLecturer() &&
-        (studentDomain() || (isDemoUser() && hasDemoRole('student')));
+      return signedIn() && verified() && !isLecturer() && (
+        listed()
+          ? listedRole() == 'student'
+          : (studentDomain() || (isDemoUser() && hasDemoRole('student')))
+      );
+    }
+
+    // Quản trị buổi demo: xoá được mọi ghi chú để dọn nội dung không phù hợp.
+    // KHÔNG cấp quyền ghi — phần demo permission-denied không bị ảnh hưởng.
+    function isAdmin() { return signedIn() && verified() && isDemoLecturer(); }
+
+    /* ---------- Dữ liệu ---------- */
+
+    // Allowlist: người dùng chỉ đọc được dòng của CHÍNH MÌNH, và không ai ghi được từ client.
+    // Muốn cấp vai trò: Firebase Console → Firestore → thêm tài liệu, id là email viết thường;
+    // hoặc chạy Admin SDK. Đây chính là chỗ trả lời "làm sao biết ai là sinh viên, ai là
+    // giảng viên khi họ không dùng mail trường": hệ thống KHÔNG đoán, admin cấp trước.
+    match /allowlist/{userEmail} {
+      allow read: if signedIn() && email() == userEmail;
+      allow write: if false;
     }
 
     // Vai trò chế độ demo: chỉ tài khoản demo được ghi, chỉ hồ sơ của chính mình,
-    // chỉ nhận 'student' hoặc 'lecturer'. Đổi lại bất cứ lúc nào.
+    // chỉ nhận 'student' hoặc 'lecturer'. Người có trong allowlist không ghi được ở đây.
     match /roles/{uid} {
       allow read: if signedIn() && request.auth.uid == uid;
       allow create, update: if isDemoUser() && request.auth.uid == uid

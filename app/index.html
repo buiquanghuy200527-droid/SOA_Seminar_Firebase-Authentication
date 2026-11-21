@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Bảng ghi chú môn học – Firebase Auth Demo</title>
+<link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">Bảng ghi chú môn học <span class="tag">Firebase Authentication · Nhóm 12</span></div>
+  <button id="btn-logout" class="btn ghost hidden">Đăng xuất</button>
+</header>
+
+<main>
+  <div id="setup-warning" class="banner error hidden"></div>
+
+  <!-- ===================== PHA 1: XÁC THỰC ===================== -->
+  <section id="auth-view" class="card narrow hidden">
+    <h2>Pha 1 · Đăng nhập</h2>
+    <p class="muted">Chọn một cách xác thực do Firebase Authentication cung cấp.</p>
+    <div class="tabs">
+      <button class="tab active" data-tab="login">Đăng nhập</button>
+      <button class="tab" data-tab="register">Đăng ký</button>
+    </div>
+    <form id="form-login" class="form">
+      <label>Email <input type="email" id="login-email" required autocomplete="username" /></label>
+      <label>Mật khẩu <input type="password" id="login-password" required autocomplete="current-password" /></label>
+      <button type="submit" class="btn primary">Đăng nhập bằng Email/Password</button>
+      <button type="button" id="btn-forgot" class="link">Quên mật khẩu?</button>
+    </form>
+    <form id="form-register" class="form hidden">
+      <label>Họ tên <input type="text" id="reg-name" required /></label>
+      <label>Email <input type="email" id="reg-email" required autocomplete="username" placeholder="mssv@student.tdtu.edu.vn" /></label>
+      <label>Mật khẩu (tối thiểu 6 ký tự) <input type="password" id="reg-password" required minlength="6" autocomplete="new-password" /></label>
+      <button type="submit" class="btn primary">Tạo tài khoản</button>
+    </form>
+    <div class="divider"><span>hoặc</span></div>
+    <button id="btn-google" class="btn google">
+      <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>
+      Đăng nhập bằng Google
+    </button>
+    <button id="btn-github" class="btn google">
+      <svg width="18" height="18" viewBox="0 0 16 16" aria-hidden="true"><path fill="#24292f" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+      Đăng nhập bằng GitHub
+    </button>
+    <p class="muted hint">
+      Ba cách đăng nhập khác nhau, nhưng tất cả đều quy về <b>một danh tính đã xác minh</b>.
+      Vai trò <b>không</b> suy ra từ cách đăng nhập — xem banner sau khi vào.
+    </p>
+    <p id="auth-msg" class="msg"></p>
+    <div id="link-panel" class="banner warn hidden">
+      <span id="link-msg"></span>
+      <button id="btn-link-google" class="btn small">Đăng nhập Google để gộp</button>
+      <button id="btn-link-cancel" class="link">Huỷ</button>
+    </div>
+  </section>
+
+  <!-- ===================== CHẾ ĐỘ DEMO: email ngoài trường chọn vai trò ===================== -->
+  <section id="role-pick-view" class="card narrow hidden">
+    <h2>Chế độ demo · Chọn vai trò để thử</h2>
+    <p class="muted">Email này không thuộc tên miền của trường, nên vai trò do bạn tự chọn để thử demo. Đổi lại được bất cứ lúc nào.</p>
+    <p class="muted">Dù chọn vai trò nào, <b>quyền của vai trò đó vẫn do server kiểm tra</b> bằng Security Rules: Sinh viên được đọc + ghi, Giảng viên chỉ được đọc.</p>
+    <div class="row">
+      <button id="btn-pick-student" class="btn primary">Thử với vai trò Sinh viên</button>
+      <button id="btn-pick-lecturer" class="btn">Thử với vai trò Giảng viên</button>
+    </div>
+    <p id="role-msg" class="msg"></p>
+  </section>
+
+  <!-- ===================== SAU KHI ĐĂNG NHẬP ===================== -->
+  <section id="app-view" class="hidden">
+    <div id="demo-banner" class="banner warn hidden">
+      <span>Chế độ demo — vai trò tự chọn: <b id="demo-role-label"></b></span>
+      <button id="btn-switch-role" class="btn small"></button>
+      <span id="demo-msg" class="msg error"></span>
+    </div>
+    <div id="verify-banner" class="banner warn hidden">
+      Email chưa được xác minh nên chưa có quyền gì. Mở hộp thư, bấm link xác minh rồi bấm
+      <button id="btn-verified" class="btn small">Tôi đã xác minh</button>
+      <button id="btn-resend" class="btn small ghost">Gửi lại email</button>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <h2>Thông tin người dùng</h2>
+        <div class="profile">
+          <img id="p-photo" alt="" />
+          <div>
+            <div id="p-name" class="pname"></div>
+            <div id="p-email" class="muted"></div>
+            <span id="p-role" class="role"></span>
+          </div>
+        </div>
+        <dl class="kv">
+          <dt>UID</dt><dd id="p-uid" class="mono"></dd>
+          <dt>Đăng nhập bằng</dt><dd id="p-provider"></dd>
+          <dt>Cách đăng nhập đã gộp</dt><dd id="p-linked"></dd>
+          <dt>Email đã xác minh</dt><dd id="p-verified"></dd>
+          <dt>Vai trò đến từ</dt><dd id="p-rolesource"></dd>
+          <dt>Quyền trên app</dt><dd id="p-perm"></dd>
+        </dl>
+      </div>
+      <div class="card">
+        <h2>ID Token (JWT)</h2>
+        <p class="muted">Sau khi đăng nhập, Firebase cấp một JWT. Server dùng token này để biết bạn là ai.</p>
+        <div class="row">
+          <button id="btn-token" class="btn">Xem token</button>
+          <button id="btn-verify" class="btn primary">Gửi lên server kiểm tra</button>
+          <button id="btn-tamper" class="btn danger">Sửa token rồi gửi</button>
+        </div>
+        <div id="jwt-out" class="hidden">
+          <div class="jwt-raw mono" id="jwt-raw"></div>
+          <div class="jwt-parts">
+            <div><h3>Header</h3><pre id="jwt-header"></pre></div>
+            <div><h3>Payload</h3><pre id="jwt-payload"></pre></div>
+          </div>
+        </div>
+        <div id="server-out" class="hidden"><h3>Phản hồi từ server của Google</h3><pre id="server-res"></pre></div>
+      </div>
+    </div>
+
+    <!-- ===== Claim do nhà cung cấp danh tính khai (chỉ hiển thị, KHÔNG dùng để cấp quyền) ===== -->
+    <div id="idp-card" class="card hidden">
+      <h2>Nhà cung cấp danh tính khai gì về bạn?</h2>
+      <p class="muted">
+        Đây là dữ liệu do provider trả về lúc đăng nhập. Với GitHub, trang còn hỏi thêm
+        GitHub API xem bạn thuộc <b>team</b> nào trong tổ chức — đó là cách một tổ chức
+        trên GitHub "khai" vai trò. Tài khoản cá nhân không thuộc tổ chức nào thì không có gì.
+      </p>
+      <dl class="kv">
+        <dt>Provider</dt><dd id="idp-provider" class="mono"></dd>
+        <dt>Tenant / miền</dt><dd id="idp-tenant" class="mono"></dd>
+        <dt>Vai trò provider khai</dt><dd id="idp-claimed-role" class="mono"></dd>
+        <dt>Vai trò server thật sự cấp</dt><dd id="idp-actual-role" class="mono"></dd>
+      </dl>
+      <div id="idp-mismatch" class="banner warn hidden"></div>
+      <div class="banner warn">
+        <b>Vì sao phần này không được dùng để cấp quyền:</b> dữ liệu trên do <i>trình duyệt</i>
+        đọc và hiển thị. Client sửa được, nên nếu đem nó ghi vào Firestore để Rules tin thì
+        bản chất không khác gì nút tự chọn vai trò. Muốn tin được, nhóm claim này phải do
+        <b>server</b> chuyển thành custom claim (blocking function <code>beforeSignIn</code>)
+        hoặc do admin đồng bộ sẵn vào <code>allowlist</code>.
+      </div>
+      <details>
+        <summary class="muted">Xem toàn bộ claim thô từ provider</summary>
+        <pre id="idp-raw"></pre>
+      </details>
+    </div>
+
+    <!-- ===================== PHA 2: PHÂN QUYỀN ===================== -->
+    <div class="card">
+      <h2>Pha 2 · Ghi chú môn học</h2>
+      <p id="perm-note" class="muted"></p>
+      <form id="form-note" class="note-form hidden">
+        <textarea id="note-text" maxlength="500" placeholder="Viết ghi chú..." required></textarea>
+        <button type="submit" class="btn primary">Đăng</button>
+      </form>
+      <div id="try-write" class="hidden">
+        <button id="btn-try-write" class="btn danger">Thử ghi dù không có quyền</button>
+        <span class="muted">Giao diện không chặn — để xem server có chặn không.</span>
+      </div>
+      <p id="notes-msg" class="msg"></p>
+      <ul id="notes" class="notes"></ul>
+    </div>
+  </section>
+</main>
+
+
+<script>
+  // Script thường (không phải module) để luôn chạy được, kể cả khi Firebase không tải được.
+  if (location.protocol === "file:") {
+    var w = document.getElementById("setup-warning");
+    w.innerHTML = "Trang này phải được mở qua một <b>đường link web</b> (ví dụ link Netlify), không mở trực tiếp file trên máy. Xem README.md, Bước 8.";
+    w.classList.remove("hidden");
+  }
+</script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
